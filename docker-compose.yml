@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      # Persist lead JSON between container restarts
+      - lead-data:/app/.data
+
+volumes:
+  lead-data:
