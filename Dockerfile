@@ -1,4 +1,8 @@
 # Build standalone Next.js (see https://nextjs.org/docs/app/building-your-application/deploying#docker-image)
+#
+# TODO(before production deploy): Do not bake `.env` into this image (no COPY .env). Runtime
+# secrets should come from your orchestrator / `docker compose --env-file` / secrets API.
+# Local dev uses `docker-compose.yml` to mount host `.env` — remove that mount before deploy too.
 FROM node:22-alpine AS base
 
 FROM base AS deps

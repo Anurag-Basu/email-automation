@@ -3,6 +3,10 @@ node_modules
 .git
 .data
 *.md
+
+# Keep `.env` out of the image build context (avoids secrets in layer cache). For local Docker,
+# variables still load via `env_file` + bind mount in docker-compose.yml.
+# TODO(before production deploy): keep this; never COPY .env in the Dockerfile.
 .env
 .env.*
 !.env.example

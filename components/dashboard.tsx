@@ -7,6 +7,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -178,7 +179,13 @@ export function Dashboard({ initialLeads }: { initialLeads: Lead[] }) {
             <code className="rounded bg-muted px-1 py-0.5 text-xs">
               SMTP_DRY_RUN=true
             </code>{" "}
-            for testing.
+            for testing.{" "}
+            <Link
+              href="/test"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Test SMTP
+            </Link>
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">

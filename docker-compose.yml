@@ -1,3 +1,6 @@
+# TODO(before production deploy): Remove the `.env` bind mount below. Use Docker secrets,
+# Compose `secrets:`, or CI/host environment variables instead — do not mount or COPY `.env`
+# into production containers or images.
 services:
   web:
     build: .
@@ -8,6 +11,9 @@ services:
     volumes:
       # Persist lead JSON between container restarts
       - lead-data:/app/.data
+      # Same `.env` as local dev: file exists in the container at /app/.env and stays in sync
+      # with your host (no Docker-only duplicate). TODO: remove this mount before deploy; use secrets.
+      - ./.env:/app/.env:ro
 
 volumes:
   lead-data:

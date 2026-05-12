@@ -97,3 +97,36 @@ export async function sendLeadEmail(lead: Lead) {
   }
   return info;
 }
+
+export type TestEmailPayload = {
+  to: string;
+  subject: string;
+  text: string;
+};
+
+/** Send a one-off message (e.g. /test page). Respects SMTP_DRY_RUN. */
+export async function sendTestEmail({ to, subject, text }: TestEmailPayload) {
+  const from = process.env.EMAIL_FROM;
+  if (!from) {
+    throw new Error("EMAIL_FROM is required");
+  }
+
+  if (process.env.SMTP_DRY_RUN === "true") {
+    return { messageId: `dry-run-test-${Date.now()}` as string, dryRun: true };
+  }
+
+  const transport = createTransport();
+  const info = await transport.sendMail({
+    from: process.env.EMAIL_FROM_NAME
+      ? `"${process.env.EMAIL_FROM_NAME}" <${from}>`
+      : from,
+    to,
+    subject,
+    text,
+  });
+
+  if (!info.messageId) {
+    throw new Error("SMTP accepted the message but returned no message id");
+  }
+  return { ...info, dryRun: false };
+}

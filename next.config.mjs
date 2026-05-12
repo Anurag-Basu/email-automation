@@ -7,6 +7,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  serverExternalPackages: ["pdfkit"],
   // Critical when multiple lockfiles exist (e.g. parent ~/package-lock.json): without this,
   // Turbopack can infer the wrong root and watch huge trees → CPU/RAM spike and OS freeze.
   turbopack: {
