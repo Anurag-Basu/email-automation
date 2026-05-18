@@ -19,9 +19,9 @@ const inputClass =
 
 export function TestEmailForm() {
   const [to, setTo] = useState("");
-  const [subject, setSubject] = useState("Lead automation — SMTP test");
+  const [subject, setSubject] = useState("Job outreach — test message");
   const [body, setBody] = useState(
-    "This is a test message from the lead email automation app.\n\nIf you received this, SMTP is configured correctly."
+    "This is a test from the job outreach app.\n\nIf you see this, outgoing email is set up correctly."
   );
   const [sending, setSending] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
@@ -72,11 +72,11 @@ export function TestEmailForm() {
         throw new Error(data.error || "Request failed");
       }
       const msg = data.dryRun
-        ? `Dry run (no SMTP): fake id ${data.messageId ?? "n/a"} — no email was sent.`
-        : `Sent. Message-ID: ${data.messageId ?? "n/a"}`;
+        ? `Practice run (no delivery): reference id ${data.messageId ?? "n/a"} — no email was sent.`
+        : `Sent. Reference id: ${data.messageId ?? "n/a"}`;
       setLastResult(msg);
       setLastWasDryRun(Boolean(data.dryRun));
-      toast.success(data.dryRun ? "Dry run only — turn off SMTP_DRY_RUN to send" : "Test email sent");
+      toast.success(data.dryRun ? "Practice mode — turn off SMTP_DRY_RUN to send for real" : "Test message sent");
     } catch (err) {
       const m = err instanceof Error ? err.message : "Send failed";
       setError(m);
@@ -89,32 +89,31 @@ export function TestEmailForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Send test</CardTitle>
+        <CardTitle>Send a test message</CardTitle>
         <CardDescription>
-          Uses <code className="text-xs">EMAIL_FROM</code> as the sender. With{" "}
-          <code className="text-xs">SMTP_DRY_RUN=true</code>, nothing is delivered
-          over the network.
+          Uses your configured <em>from</em> address. With practice mode (
+          <code className="text-xs">SMTP_DRY_RUN=true</code> in{" "}
+          <code className="text-xs">.env</code>), nothing is delivered over the
+          internet — useful for safe checks.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {dryRunMode === true ? (
           <Alert variant="destructive" className="mb-4">
-            <AlertTitle>SMTP dry run is on</AlertTitle>
+            <AlertTitle>Practice mode is on</AlertTitle>
             <AlertDescription className="space-y-2 text-sm">
               <p>
-                In your <code className="rounded bg-muted px-1">.env</code>,{" "}
+                In your <code className="rounded bg-muted px-1">.env</code> file,{" "}
                 <code className="rounded bg-muted px-1">SMTP_DRY_RUN=true</code>{" "}
-                tells the app to <strong>never</strong> connect to Gmail — you only
-                get a fake message id.
+                means the app will <strong>not</strong> connect to your mail
+                server — you only get a made-up message id for logs.
               </p>
               <p>
                 To send real mail: set{" "}
                 <code className="rounded bg-muted px-1">SMTP_DRY_RUN=false</code>{" "}
-                (or delete that line), keep valid{" "}
-                <code className="rounded bg-muted px-1">SMTP_*</code> and{" "}
-                <code className="rounded bg-muted px-1">EMAIL_FROM</code>, then{" "}
-                <strong>restart</strong> the dev server or Docker container so env
-                reloads.
+                (or remove that line), keep valid mail settings and an{" "}
+                <code className="rounded bg-muted px-1">EMAIL_FROM</code> value,
+                then <strong>restart</strong> the app so settings reload.
               </p>
             </AlertDescription>
           </Alert>
@@ -146,7 +145,7 @@ export function TestEmailForm() {
               className={inputClass}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Lead automation — SMTP test"
+              placeholder="Job outreach — test message"
             />
           </div>
           <div className="space-y-2">
@@ -172,12 +171,12 @@ export function TestEmailForm() {
 
           {lastResult ? (
             <Alert variant={lastWasDryRun ? "destructive" : "default"}>
-              <AlertTitle>{lastWasDryRun ? "Dry run result" : "Result"}</AlertTitle>
+              <AlertTitle>{lastWasDryRun ? "Practice mode result" : "Result"}</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p className="font-mono text-xs">{lastResult}</p>
                 {lastWasDryRun ? (
                   <p className="text-sm">
-                    Nothing is missing from the code — disable dry run in{" "}
+                    Nothing is wrong in the code — turn off practice mode in{" "}
                     <code className="rounded bg-muted px-1">.env</code> and restart.
                   </p>
                 ) : null}
@@ -191,7 +190,7 @@ export function TestEmailForm() {
             ) : (
               <Send aria-hidden />
             )}
-            Send test email
+            Send test message
           </Button>
         </form>
       </CardContent>

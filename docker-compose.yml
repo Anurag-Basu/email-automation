@@ -14,6 +14,8 @@ services:
       # Same `.env` as local dev: file exists in the container at /app/.env and stays in sync
       # with your host (no Docker-only duplicate). TODO: remove this mount before deploy; use secrets.
       - ./.env:/app/.env:ro
+      # GCP: place `secrets/gcp-sa.json` on the host (see secrets/README.md). Mounted at /run/gcp.
+      - ./secrets:/run/gcp:ro
 
 volumes:
   lead-data:

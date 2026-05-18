@@ -1,11 +1,13 @@
 import { parse } from "csv-parse/sync";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 
 export type ParsedRow = {
   author: string;
   email: string;
   description: string;
+  /** First non-empty Category / Label / Tab-style column (see LIB/category-from-csv). */
+  categoryFromCsv: string;
 };
 
 function normalizeHeader(key: string) {
@@ -42,7 +44,17 @@ function mapRow(row: Record<string, string>): ParsedRow {
     m.snippet ||
     m.post ||
     "";
-  return { author, email, description };
+
+  const categoryFromCsv =
+    m.category ||
+    m.label ||
+    m.tab ||
+    m.lead_category ||
+    m.contact_category ||
+    m.job_category ||
+    "";
+
+  return { author, email, description, categoryFromCsv };
 }
 
 export function parseLeadCsv(buffer: Buffer): ParsedRow[] {

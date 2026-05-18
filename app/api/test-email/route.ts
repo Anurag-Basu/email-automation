@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     if (!isSmtpConfigured()) {
       return jsonError(
-        "Email is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM, or use SMTP_DRY_RUN=true.",
+        "Outgoing email is not set up. Add SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM to your .env file, or use SMTP_DRY_RUN=true for practice mode.",
         503
       );
     }
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     const subject =
       parsed.data.subject?.trim() ||
-      "Lead automation — SMTP test";
+      "Job outreach — test message";
 
     const result = await sendTestEmail({
       to: parsed.data.to,

@@ -1,5 +1,12 @@
 import path from "node:path";
 
+function envPathOrEmpty(key: string): string {
+  const v = process.env[key];
+  if (v == null) return "";
+  const s = String(v).trim();
+  return s;
+}
+
 /**
  * Lead JSON storage directory.
  *
@@ -9,8 +16,11 @@ import path from "node:path";
  * is sensitive to many writes under the project tree during development
  * (e.g. `/tmp/email-automation-data` on macOS/Linux).
  */
-export const DATA_DIR = process.env.LEADS_DATA_DIR?.trim()
-  ? path.resolve(process.env.LEADS_DATA_DIR.trim())
-  : path.join(process.cwd(), ".data");
+const cwd = () => String(process.cwd());
+const leadsDataDir = envPathOrEmpty("LEADS_DATA_DIR");
+
+export const DATA_DIR = leadsDataDir
+  ? path.resolve(leadsDataDir)
+  : path.join(cwd(), ".data");
 
 export const LEADS_FILE = path.join(DATA_DIR, "leads.json");

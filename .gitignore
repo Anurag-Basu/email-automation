@@ -37,6 +37,9 @@ yarn-error.log*
 # local lead store
 .data/
 
+# GCP service account keys (never commit)
+secrets/*.json
+
 # vercel
 .vercel
 

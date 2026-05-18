@@ -122,14 +122,14 @@ export function TestPdfForm() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="size-5" aria-hidden />
-          PDF from text
+          Build a PDF from text
         </CardTitle>
         <CardDescription>
-          Paste plain text. Use lines like <strong>Profile</strong>,{" "}
-          <strong>Work Experience</strong>, <strong>Skills</strong> for section headers
-          (rules under each). Start bullets with <code className="text-xs">•</code>,{" "}
+          Paste plain text. Lines like <strong>Profile</strong>,{" "}
+          <strong>Work experience</strong>, and <strong>Skills</strong> work well
+          as section titles. Start bullets with <code className="text-xs">•</code>,{" "}
           <code className="text-xs">-</code>, or <code className="text-xs">1.</code>{" "}
-          — first line is treated as your name when it looks like a name.
+          The first line is treated as your name when it looks like a person&apos;s name.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

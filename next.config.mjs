@@ -7,7 +7,18 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  serverExternalPackages: ["pdfkit"],
+  /** Ensure pdf.js worker + wasm assets exist in `.next/standalone` (Docker). */
+  outputFileTracingIncludes: {
+    "/api/admin/resume": [
+      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/@napi-rs/canvas/**/*",
+    ],
+    "/api/test-vertex": [
+      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/@napi-rs/canvas/**/*",
+    ],
+  },
+  serverExternalPackages: ["pdfkit", "pdfjs-dist", "@napi-rs/canvas"],
   // Critical when multiple lockfiles exist (e.g. parent ~/package-lock.json): without this,
   // Turbopack can infer the wrong root and watch huge trees → CPU/RAM spike and OS freeze.
   turbopack: {

@@ -1,6 +1,6 @@
 export type LeadStatus = "pending" | "sent" | "failed";
 
-export type LeadCategory = "frontend" | "fullstack";
+export type LeadCategory = "frontend" | "fullstack" | "other";
 
 export type Lead = {
   id: number;

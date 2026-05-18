@@ -50,18 +50,37 @@ function firstValidEmail(emailsField: string, extraText: string): string | null 
   return null;
 }
 
-/** Collapse whitespace/newlines and trim; dedupe consecutive identical words. */
+/**
+ * Dedupe repeated lines (LinkedIn scrapes often duplicate the name block),
+ * collapse whitespace, dedupe consecutive identical tokens.
+ */
 export function sanitizeAuthor(raw: string): string {
-  let s = raw.replace(/\s+/g, " ").trim();
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const seenLine = new Set<string>();
+  const uniqueLines: string[] = [];
+  for (const line of lines) {
+    const key = line.toLowerCase();
+    if (seenLine.has(key)) continue;
+    seenLine.add(key);
+    uniqueLines.push(line);
+  }
+  let s = uniqueLines.join(" ").replace(/\s+/g, " ").trim();
   if (!s) return "";
   const words = s.split(" ");
   const deduped: string[] = [];
   for (const w of words) {
-    if (deduped.length && deduped[deduped.length - 1] === w) continue;
+    if (
+      deduped.length &&
+      deduped[deduped.length - 1].toLowerCase() === w.toLowerCase()
+    ) {
+      continue;
+    }
     deduped.push(w);
   }
-  s = deduped.join(" ");
-  return s.slice(0, 500);
+  return deduped.join(" ").slice(0, 500);
 }
 
 export function sanitizeDescription(raw: string): string {

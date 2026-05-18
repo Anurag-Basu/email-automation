@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
+import { AppShell } from "@/components/app-shell";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lead email automation",
+  title: "Job outreach assistant",
   description:
-    "Upload CSV leads, classify roles, and send tracked outreach locally.",
+    "Import contacts from a spreadsheet, send tailored follow-ups, and track who you contacted — on your own computer.",
 };
 
 export default function RootLayout({
@@ -30,8 +32,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
-        {children}
+      <body className="flex min-h-full flex-col font-sans">
+        <AppShell>{children}</AppShell>
         <Toaster richColors closeButton position="top-center" />
       </body>
     </html>

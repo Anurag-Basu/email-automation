@@ -9,4 +9,6 @@ node_modules
 # TODO(before production deploy): keep this; never COPY .env in the Dockerfile.
 .env
 .env.*
-!.env.example
+# Never bake GCP keys into the image; compose bind-mounts ./secrets at runtime only.
+# secrets/
+

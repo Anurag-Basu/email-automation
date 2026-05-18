@@ -1,43 +1,45 @@
 import nodemailer from "nodemailer";
 
+import {
+  buildLinkedinLink,
+  escapeHtml,
+  getEmailTemplates,
+  htmlToPlainText,
+  interpolateTemplate,
+} from "@/lib/email-templates";
+import { getResumeProfile } from "@/lib/resume-profile";
 import type { Lead } from "@/lib/types";
 
-function interpolate(template: string, vars: Record<string, string>) {
-  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => {
-    return vars[key] ?? "";
-  });
-}
+export async function renderLeadEmail(lead: Lead): Promise<{
+  subject: string;
+  html: string;
+  text: string;
+}> {
+  const templates = await getEmailTemplates();
+  const t = templates[lead.category];
+  const profile = await getResumeProfile();
 
-export function renderTemplates(lead: Lead) {
-  const name = lead.author.trim() || "there";
-  const role = lead.description.trim() || "open";
-  const signature =
-    process.env.EMAIL_SIGNATURE_NAME?.trim() || "Your team";
+  const first =
+    lead.author.trim().split(/\s+/).find(Boolean) || "there";
+  const linkedinLink = buildLinkedinLink(profile.linkedinUrl);
+  const raw: Record<string, string> = { linkedinLink };
 
-  const vars = { name, role, signature };
+  const vars: Record<string, string> = {
+    name: escapeHtml(first),
+    fullName: escapeHtml(
+      profile.fullName.trim() || lead.author.trim() || "Candidate",
+    ),
+    phone: escapeHtml(profile.phone.trim()),
+    email: escapeHtml(profile.email.trim()),
+  };
 
-  const subject = interpolate(
-    process.env.EMAIL_SUBJECT_TEMPLATE?.trim() ||
-      "Opportunity for {{role}} role",
-    vars
-  );
+  const subjectRaw = interpolateTemplate(t.subject, vars, raw);
+  const subject = subjectRaw.replace(/<[^>]*>/g, "").trim();
 
-  const body = interpolate(
-    process.env.EMAIL_BODY_TEMPLATE?.trim() ||
-      [
-        "Hi {{name}},",
-        "",
-        "I came across your profile regarding {{role}} opportunities.",
-        "",
-        "Please find my resume attached.",
-        "",
-        "Best regards,",
-        "{{signature}}",
-      ].join("\n"),
-    vars
-  );
+  const html = interpolateTemplate(t.bodyHtml, vars, raw);
+  const text = htmlToPlainText(html);
 
-  return { subject, body };
+  return { subject, html, text };
 }
 
 export function isSmtpConfigured(): boolean {
@@ -46,7 +48,7 @@ export function isSmtpConfigured(): boolean {
     process.env.SMTP_HOST &&
       process.env.SMTP_USER &&
       process.env.SMTP_PASS &&
-      process.env.EMAIL_FROM
+      process.env.EMAIL_FROM,
   );
 }
 
@@ -56,12 +58,11 @@ function createTransport() {
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) {
     throw new Error(
-      "SMTP is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS, and EMAIL_FROM (or SMTP_DRY_RUN=true for testing)."
+      "Outgoing email is not set up. Add SMTP_HOST, SMTP_USER, SMTP_PASS, and EMAIL_FROM to your .env file (or SMTP_DRY_RUN=true for practice).",
     );
   }
   const port = Number(process.env.SMTP_PORT || 587);
-  const secure =
-    process.env.SMTP_SECURE === "true" || port === 465;
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
 
   return nodemailer.createTransport({
     host,
@@ -71,12 +72,35 @@ function createTransport() {
   });
 }
 
-export async function sendLeadEmail(lead: Lead) {
-  const { subject, body } = renderTemplates(lead);
+export type SendLeadAttachment = {
+  /** Absolute path to a temp file; removed by caller after send. */
+  path: string;
+  /** Filename shown to recipient (e.g. Anurag_resume.pdf). */
+  filename: string;
+};
+
+export async function sendLeadEmail(
+  lead: Lead,
+  attachment?: SendLeadAttachment,
+) {
+  const { subject, html, text } = await renderLeadEmail(lead);
   const from = process.env.EMAIL_FROM;
   if (!from) {
     throw new Error("EMAIL_FROM is required");
   }
+
+  const attachments =
+    attachment &&
+    attachment.path &&
+    attachment.filename
+      ? [
+          {
+            filename: attachment.filename,
+            path: attachment.path,
+            contentType: "application/pdf",
+          },
+        ]
+      : undefined;
 
   if (process.env.SMTP_DRY_RUN === "true") {
     return { messageId: `dry-run-${lead.id}` as string };
@@ -89,7 +113,9 @@ export async function sendLeadEmail(lead: Lead) {
       : from,
     to: lead.email,
     subject,
-    text: body,
+    text,
+    html,
+    attachments,
   });
 
   if (!info.messageId) {
