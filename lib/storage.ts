@@ -82,12 +82,14 @@ function normalizeLeadEmail(email: string): string {
 export type ProcessPendingOptions = {
   /** When set, only leads in this category are processed (e.g. active dashboard tab). */
   category?: LeadCategory;
+  /** Max tailor+send calls per run; duplicate-address skips do not count. Omit = entire queue. */
+  maxSendAttempts?: number;
 };
 
 export async function processPendingSends(
   sendOne: (lead: Lead) => Promise<void>,
   options?: ProcessPendingOptions,
-): Promise<SendResult[]> {
+): Promise<{ results: SendResult[]; morePending: boolean }> {
   return runExclusive(async () => {
     const state = await readState();
     const results: SendResult[] = [];
@@ -108,6 +110,9 @@ export async function processPendingSends(
         .map((l) => normalizeLeadEmail(l.email))
         .filter(Boolean),
     );
+
+    let sendAttempts = 0;
+    const maxSend = options?.maxSendAttempts;
 
     for (const lead of candidates) {
       const current = byId.get(lead.id);
@@ -130,8 +135,13 @@ export async function processPendingSends(
         continue;
       }
 
+      if (maxSend != null && sendAttempts >= maxSend) {
+        break;
+      }
+
       try {
         await sendOne(current);
+        sendAttempts++;
         current.status = "sent";
         delete current.lastError;
         if (addr) alreadyEmailed.add(addr);
@@ -149,6 +159,13 @@ export async function processPendingSends(
       });
     }
 
-    return results;
+    const cat = options?.category;
+    const morePending = [...byId.values()].some(
+      (l) =>
+        (l.status === "pending" || l.status === "failed") &&
+        (!cat || l.category === cat),
+    );
+
+    return { results, morePending };
   });
 }

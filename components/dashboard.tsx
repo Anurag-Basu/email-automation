@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CSV_ROLE_COLUMN_NAMES } from "@/lib/category-from-csv";
+import { SEND_EMAIL_BATCH_SIZE } from "@/lib/send-email-batch";
 import { cn } from "@/lib/utils";
 import type { Lead, LeadCategory } from "@/lib/types";
 
@@ -229,34 +230,58 @@ export function Dashboard({ initialLeads }: { initialLeads: Lead[] }) {
         ? "all categories"
         : `${LEAD_TABS.find((t) => t.id === leadTab)?.label ?? leadTab} tab`;
     const toastId = toast.loading(
-      `Updating resumes and sending ${n} email(s) (${scopeLabel})…`,
+      `Sending up to ${SEND_EMAIL_BATCH_SIZE} at a time (${scopeLabel})…`,
     );
+    let totalSent = 0;
+    let totalFailed = 0;
+    let totalDup = 0;
+    let batchNum = 0;
     try {
-      const res = await fetch("/api/send-emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(leadTab === "all" ? {} : { category: leadTab }),
-      });
-      const data = await readJson<{
-        ok?: boolean;
-        error?: string;
-        sent?: number;
-        failed?: number;
-        skippedDuplicates?: number;
-        processed?: number;
-      }>(res);
-      if (!res.ok) {
-        throw new Error(data.error || "Send failed");
+      for (;;) {
+        batchNum += 1;
+        toast.loading(
+          `Batch ${batchNum}: up to ${SEND_EMAIL_BATCH_SIZE} tailor + send (${scopeLabel})…`,
+          { id: toastId },
+        );
+        const res = await fetch("/api/send-emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(leadTab === "all" ? {} : { category: leadTab }),
+            batchSize: SEND_EMAIL_BATCH_SIZE,
+          }),
+        });
+        const data = await readJson<{
+          ok?: boolean;
+          error?: string;
+          sent?: number;
+          failed?: number;
+          skippedDuplicates?: number;
+          processed?: number;
+          morePending?: boolean;
+        }>(res);
+        if (!res.ok) {
+          throw new Error(data.error || "Send failed");
+        }
+        totalSent += data.sent ?? 0;
+        totalFailed += data.failed ?? 0;
+        totalDup += data.skippedDuplicates ?? 0;
+
+        await refresh();
+
+        if (data.morePending !== true) {
+          break;
+        }
       }
-      const skip = data.skippedDuplicates ?? 0;
-      const tail =
-        skip > 0
-          ? ` · ${skip} skipped (same email already sent earlier)`
+
+      const dupTail =
+        totalDup > 0
+          ? ` · ${totalDup} skipped (same email already sent earlier)`
           : "";
-      toast.success(`Done: ${data.sent ?? 0} sent · ${data.failed ?? 0} not sent${tail}`, {
-        id: toastId,
-      });
-      await refresh();
+      toast.success(
+        `Done: ${totalSent} sent · ${totalFailed} not sent${dupTail}`,
+        { id: toastId },
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Send failed";
       toast.error(msg, { id: toastId });
@@ -316,7 +341,7 @@ export function Dashboard({ initialLeads }: { initialLeads: Lead[] }) {
           <code className="rounded bg-muted px-1 py-0.5 text-xs">.env</code>
           ). After each send, progress is saved so you can stop and continue
           later (anything still <em>waiting</em> or <em>failed</em> stays in the
-          queue). For a trial run without real delivery, turn on practice mode
+          queue). Sends run in batches of {SEND_EMAIL_BATCH_SIZE} (each batch finishes before the next starts so the table can refresh). For a trial run without real delivery, turn on practice mode
           with{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             SMTP_DRY_RUN=true

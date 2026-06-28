@@ -10,7 +10,10 @@ import { jsonError } from "@/lib/http";
 import { DATA_DIR } from "@/lib/paths";
 import { requireResumeContextText } from "@/lib/resume-context";
 import { getResumeProfile, profileReadyForTailor } from "@/lib/resume-profile";
-import { processPendingSends } from "@/lib/storage";
+import { SEND_EMAIL_BATCH_SIZE } from "@/lib/send-email-batch";
+import {
+  processPendingSends,
+} from "@/lib/storage";
 import { tailorResumeMarkdown } from "@/lib/tailor-resume-pipeline";
 import type { Lead, LeadCategory } from "@/lib/types";
 import { isVertexEnvConfigured } from "@/lib/vertex-genai";
@@ -20,6 +23,7 @@ export const maxDuration = 300;
 
 const postBodySchema = z.object({
   category: z.enum(["frontend", "fullstack", "other"]).optional(),
+  batchSize: z.coerce.number().int().min(1).max(50).optional(),
 });
 
 function fallbackJobDescription(lead: Lead): string {
@@ -32,18 +36,25 @@ function fallbackJobDescription(lead: Lead): string {
 
 async function parsePostJson(
   request: Request,
-): Promise<{ category?: LeadCategory }> {
+): Promise<{ category?: LeadCategory; batchSize: number }> {
   const raw = await request.text();
-  if (!raw.trim()) return {};
+  if (!raw.trim()) {
+    return { batchSize: SEND_EMAIL_BATCH_SIZE };
+  }
   let json: unknown;
   try {
     json = JSON.parse(raw) as unknown;
   } catch {
-    return {};
+    return { batchSize: SEND_EMAIL_BATCH_SIZE };
   }
   const p = postBodySchema.safeParse(json);
-  if (!p.success) return {};
-  return { category: p.data.category };
+  if (!p.success) {
+    return { batchSize: SEND_EMAIL_BATCH_SIZE };
+  }
+  return {
+    category: p.data.category,
+    batchSize: p.data.batchSize ?? SEND_EMAIL_BATCH_SIZE,
+  };
 }
 
 export async function POST(request: Request) {
@@ -80,11 +91,11 @@ export async function POST(request: Request) {
       return jsonError(message, 503);
     }
 
-    const { category } = await parsePostJson(request);
+    const { category, batchSize } = await parsePostJson(request);
     const sendTempDir = path.join(DATA_DIR, "send-temp");
     await mkdir(sendTempDir, { recursive: true });
 
-    const results = await processPendingSends(async (lead) => {
+    const { results, morePending } = await processPendingSends(async (lead) => {
       const jd = fallbackJobDescription(lead);
       let tempPath: string | null = null;
       try {
@@ -105,7 +116,7 @@ export async function POST(request: Request) {
           await unlink(tempPath).catch(() => undefined);
         }
       }
-    }, { category });
+    }, { category, maxSendAttempts: batchSize });
 
     const emailed = results.filter((r) => r.ok && !r.duplicateSkip).length;
     const skippedDuplicates = results.filter((r) => r.duplicateSkip).length;
@@ -119,6 +130,8 @@ export async function POST(request: Request) {
       failed,
       results,
       category: category ?? null,
+      morePending,
+      batchSize,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Send pipeline failed";
